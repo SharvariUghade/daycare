@@ -1,0 +1,486 @@
+package minii;
+
+
+import javax.swing.*;
+import java.awt.*;
+import java.sql.*;
+import java.util.*;
+
+public class Main extends JFrame {
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/miniproject?serverTimezone=UTC"; // Adjust your database name
+    private static final String USER = "root"; // Your MySQL username
+    private static final String PASS = "ROOT"; // Your MySQL password
+
+    private JTextField emailField;
+    private JPasswordField passwordField;
+    private JTextField addressField;
+    private JTextArea outputArea;
+    private Connection connection;
+
+    public Main() {
+        setTitle("Daycare Management System");
+        setSize(600, 400);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        // Login Panel
+        JPanel loginPanel = new JPanel();
+        loginPanel.setLayout(new GridLayout(4, 2));
+        loginPanel.add(new JLabel("Email:"));
+        emailField = new JTextField();
+        loginPanel.add(emailField);
+        loginPanel.add(new JLabel("Password:"));
+        passwordField = new JPasswordField();
+        loginPanel.add(passwordField);
+        loginPanel.add(new JLabel("Address:"));
+        addressField = new JTextField();
+        loginPanel.add(addressField);
+        JButton loginButton = new JButton("Login");
+        JButton registerButton = new JButton("Register");
+        loginPanel.add(loginButton);
+        loginPanel.add(registerButton);
+
+        add(loginPanel, BorderLayout.NORTH);
+
+        // Output Area
+        outputArea = new JTextArea();
+        outputArea.setEditable(false);
+        add(new JScrollPane(outputArea), BorderLayout.CENTER);
+
+        // Establish Connection
+        try {
+            connection = DriverManager.getConnection(DB_URL, USER, PASS);
+        } catch (SQLException e) {
+            outputArea.setText("Database connection error: " + e.getMessage());
+            return;
+        }
+
+        // Login Button Action
+        loginButton.addActionListener(e -> userLogin());
+
+        // Register Button Action
+        registerButton.addActionListener(e -> userRegister());
+    }
+
+    private void userLogin() {
+        String email = emailField.getText();
+        String password = new String(passwordField.getPassword());
+
+        try {
+            String loginQuery = "SELECT * FROM user WHERE email = ? AND password = ?";
+            PreparedStatement loginStmt = connection.prepareStatement(loginQuery);
+            loginStmt.setString(1, email);
+            loginStmt.setString(2, password);
+            ResultSet rs = loginStmt.executeQuery();
+
+            if (rs.next()) {
+                outputArea.setText("Login successful!\n");
+                int userId = rs.getInt("user_id");
+                String userAddress = rs.getString("address");
+                userMenu(userId, userAddress);
+            } else {
+                outputArea.setText("Invalid email or password.\n");
+            }
+        } catch (SQLException e) {
+            outputArea.setText("Database error: " + e.getMessage());
+        }
+    }
+
+    private void userRegister() {
+        String email = emailField.getText();
+        String password = new String(passwordField.getPassword());
+        String address = addressField.getText();
+
+        try {
+            // Check if the email already exists
+            String checkEmailQuery = "SELECT * FROM user WHERE email = ?";
+            PreparedStatement checkEmailStmt = connection.prepareStatement(checkEmailQuery);
+            checkEmailStmt.setString(1, email);
+            ResultSet rs = checkEmailStmt.executeQuery();
+
+            if (rs.next()) {
+                outputArea.setText("Email is already registered. Please log in.\n");
+                return;
+            }
+
+            // Insert new user into the database
+            String registerQuery = "INSERT INTO user (email, password, address) VALUES (?, ?, ?)";
+            PreparedStatement registerStmt = connection.prepareStatement(registerQuery);
+            registerStmt.setString(1, email);
+            registerStmt.setString(2, password);
+            registerStmt.setString(3, address);
+            registerStmt.executeUpdate();
+            outputArea.setText("Registration successful! You can now log in.\n");
+        } catch (SQLException e) {
+            outputArea.setText("Database error: " + e.getMessage());
+        }
+    }
+
+    private void userMenu(int userId, String userAddress) {
+        JFrame menuFrame = new JFrame("User  Menu");
+        menuFrame.setSize(400, 300);
+        menuFrame.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        menuFrame.setLocationRelativeTo(null);
+        menuFrame.setLayout(new GridLayout(7, 1));
+
+        JButton viewCentersButton = new JButton("View Daycare Centers");
+        JButton searchCentersButton = new JButton("Search Daycare Centers");
+        JButton addChildButton = new JButton("Add Child");
+        JButton processPaymentButton = new JButton("Process Payment");
+        JButton viewDietsButton = new JButton("View Diets");
+        JButton viewActivitiesButton = new JButton("View Activities");
+        JButton viewPaymentHistoryButton = new JButton("View Payment History"); // New button
+        JButton logoutButton = new JButton("Logout");
+
+        viewCentersButton.addActionListener(e -> viewDaycareCenters());
+        searchCentersButton.addActionListener(e -> searchDaycareCenters());
+        addChildButton.addActionListener(e -> addChild(userId));
+        processPaymentButton.addActionListener(e -> processPayment(userId));
+        viewDietsButton.addActionListener(e -> viewDiets(userId));
+        viewActivitiesButton.addActionListener(e -> viewActivities(userId));
+        viewPaymentHistoryButton.addActionListener(e -> viewPaymentHistory(userId)); // Action for new button
+        logoutButton.addActionListener(e -> menuFrame.dispose());
+        logoutButton.addActionListener(e -> menuFrame.dispose());
+
+        menuFrame.add(viewCentersButton);
+        menuFrame.add(searchCentersButton);
+        menuFrame.add(addChildButton);
+        menuFrame.add(processPaymentButton);
+        menuFrame.add(viewDietsButton);
+        menuFrame.add(viewActivitiesButton);
+        menuFrame.add(viewPaymentHistoryButton);
+        menuFrame.add(logoutButton);
+
+        menuFrame.setVisible(true);
+    }
+
+    private void viewDaycareCenters() {
+        try {
+            String query = "SELECT * FROM daycare_centers";
+            Statement stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+
+            StringBuilder output = new StringBuilder("Daycare Centers:\n");
+            while (rs.next()) {
+                output.append("Center ID: ").append(rs.getInt("center_id")).append("\n")
+                      .append("Name: ").append(rs.getString("name")).append("\n")
+                      .append("Details: ").append(rs.getString("details")).append("\n")
+                      .append("Address: ").append(rs.getString("address")).append("\n")
+                      .append("Rating: ").append(rs.getFloat("rating")).append("\n")
+                      .append("Contact Number: ").append(rs.getString("contact_number")).append("\n")
+                      .append("Requests: ").append(rs.getInt("requests")).append("\n")
+                      .append("----------------------------------\n");
+            }
+            outputArea.setText(output.toString());
+        } catch (SQLException e) {
+            outputArea.setText("Error retrieving daycare centers: " + e.getMessage());
+        }
+    }
+
+    private void searchDaycareCenters() {
+        String searchQuery = JOptionPane.showInputDialog("Enter search term:");
+        try {
+            String query = "SELECT * FROM daycare_centers WHERE name LIKE ?";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setString(1, "%" + searchQuery + "%");
+            ResultSet rs = stmt.executeQuery();
+
+            StringBuilder output = new StringBuilder("Search Results:\n");
+            while (rs.next()) {
+                output.append("Center ID: ").append(rs.getInt("center_id")).append("\n")
+                      .append("Name: ").append(rs.getString("name")).append("\n")
+                      .append("Details: ").append(rs.getString("details")).append("\n")
+                      .append("Address: ").append(rs.getString("address")).append("\n")
+                      .append("Rating: ").append(rs.getFloat("rating")).append("\n")
+                      .append("Contact Number: ").append(rs.getString("contact_number")).append("\n")
+                      .append("Requests: ").append(rs.getInt("requests")).append("\n")
+                      .append("----------------------------------\n");
+            }
+            outputArea.setText(output.toString());
+        } catch (SQLException e) {
+            outputArea.setText("Error searching daycare centers: " + e.getMessage());
+        }
+    }
+
+    private void addChild(int userId) {
+        String childName = JOptionPane.showInputDialog("Enter Child Name:");
+        String childAgeInput = JOptionPane.showInputDialog("Enter Child Age:");
+        int childAge = Integer.parseInt(childAgeInput);
+
+        try {
+            String query = "INSERT INTO children (user_id, name, age) VALUES (?, ?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setInt(1, userId);
+            stmt.setString(2, childName);
+            stmt.setInt(3, childAge);
+            stmt.executeUpdate();
+            outputArea.setText("Child added successfully!\n");
+        } catch (SQLException e) {
+            outputArea.setText("Error adding child: " + e.getMessage());
+        }
+    }
+
+    private void processPayment(int userId) {
+        String amountInput = JOptionPane.showInputDialog("Enter Payment Amount:");
+        String pin = JOptionPane.showInputDialog("Enter Pin:");
+        double amount = Double.parseDouble(amountInput);
+
+        try {
+            String paymentQuery = "INSERT INTO payment (user_id, amount, date) VALUES (?, ?, NOW())";
+            PreparedStatement paymentStmt = connection.prepareStatement(paymentQuery);
+            paymentStmt.setInt(1, userId);
+            paymentStmt.setDouble(2, amount);
+            paymentStmt.executeUpdate();
+            outputArea.setText("Payment of $" + amount + " processed successfully!\n");
+
+            // After payment, allow user to add diet and activities
+            addDiet(userId);
+            addActivity(userId);
+        } catch (SQLException e) {
+            outputArea.setText("Error processing payment: " + e.getMessage());
+        }
+    }
+
+    private void addDiet(int userId) {
+        try {
+            // Fetch the list of children for the user
+            String childQuery = "SELECT child_id, name FROM children WHERE user_id = ?";
+            PreparedStatement childStmt = connection.prepareStatement(childQuery);
+            childStmt.setInt(1, userId);
+            ResultSet childRs = childStmt.executeQuery();
+
+            // Create a list to hold child names and IDs
+            ArrayList<String> childNames = new ArrayList<>();
+            while (childRs.next()) {
+                int childId = childRs.getInt("child_id");
+                String childName = childRs.getString("name");
+                childNames.add(childId + ": " + childName); // Store as "childId: childName"
+            }
+
+            // Show a dialog to select a child
+            String selectedChild = (String) JOptionPane.showInputDialog(
+                    null,
+                    "Select a Child:",
+                    "Child Selection",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    childNames.toArray(),
+                    childNames.get(0) // Default selection
+            );
+
+            if (selectedChild == null) {
+                outputArea.setText("No child selected.\n");
+                return;
+            }
+
+            // Extract the child ID from the selected string
+            int childId = Integer.parseInt(selectedChild.split(":")[0].trim());
+
+            // Get diet description from the user
+            String dietDescription = JOptionPane.showInputDialog("Enter Diet Description:");
+
+            // Insert the diet into the database
+            String dietQuery = "INSERT INTO diets (user_id, child_id, diet_description, date) VALUES (?, ?, ?, NOW())";
+            PreparedStatement dietStmt = connection.prepareStatement(dietQuery);
+            dietStmt.setInt(1, userId);
+            dietStmt.setInt(2, childId);
+            dietStmt.setString(3, dietDescription);
+            dietStmt.executeUpdate();
+            outputArea.append("Diet added successfully!\n");
+        } catch (SQLException e) {
+            e.printStackTrace(); // Print the stack trace for debugging
+            outputArea.append("Error adding diet: " + e.getMessage() + "\n");
+        }
+    }
+
+    private void addActivity(int userId) {
+        try {
+            // Fetch the list of children for the user
+            String childQuery = "SELECT child_id, name FROM children WHERE user_id = ?";
+            PreparedStatement childStmt = connection.prepareStatement(childQuery);
+            childStmt.setInt(1, userId);
+            ResultSet childRs = childStmt.executeQuery();
+
+            // Create a list to hold child names and IDs
+            ArrayList<String> childNames = new ArrayList<>();
+            while (childRs.next()) {
+                int childId = childRs.getInt("child_id");
+                String childName = childRs.getString("name");
+                childNames.add(childId + ": " + childName); // Store as "childId: childName"
+            }
+
+            // Show a dialog to select a child
+            String selectedChild = (String) JOptionPane.showInputDialog(
+                    null,
+                    "Select a Child:",
+                    "Child Selection",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    childNames.toArray(),
+                    childNames.get(0) // Default selection
+            );
+
+            if (selectedChild == null) {
+                outputArea.setText("No child selected.\n");
+                return;
+            }
+
+            // Extract the child ID from the selected string
+            int childId = Integer.parseInt(selectedChild.split(":")[0].trim());
+
+            // Get activity description from the user
+            String activityDescription = JOptionPane.showInputDialog("Enter Activity Description:");
+
+            // Insert the activity into the database
+            String activityQuery = "INSERT INTO activities (user_id, child_id, activity_description, date) VALUES (?, ?, ?, NOW())";
+            PreparedStatement activityStmt = connection.prepareStatement(activityQuery);
+            activityStmt.setInt(1, userId);
+            activityStmt.setInt(2, childId);
+            activityStmt.setString(3, activityDescription);
+            activityStmt.executeUpdate();
+            outputArea.append("Activity added successfully!\n");
+        } catch (SQLException e) {
+            e.printStackTrace(); // Print the stack trace for debugging
+            outputArea.append("Error adding activity: " + e.getMessage() + "\n");
+        }
+    }
+
+    private void viewDiets(int userId) {
+        try {
+            // Fetch the list of children for the user
+            String childQuery = "SELECT child_id, name FROM children WHERE user_id = ?";
+            PreparedStatement childStmt = connection.prepareStatement(childQuery);
+            childStmt.setInt(1, userId);
+            ResultSet childRs = childStmt.executeQuery();
+
+            // Create a list to hold child names and IDs
+            ArrayList<String> childNames = new ArrayList<>();
+            while (childRs.next()) {
+                int childId = childRs.getInt("child_id");
+                String childName = childRs.getString("name");
+                childNames.add(childId + ": " + childName); // Store as "childId: childName"
+            }
+
+            // Show a dialog to select a child
+            String selectedChild = (String) JOptionPane.showInputDialog(
+                    null,
+                    "Select a Child:",
+                    "Child Selection",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    childNames.toArray(),
+                    childNames.get(0) // Default selection
+            );
+
+            if (selectedChild == null) {
+                outputArea.setText("No child selected.\n");
+                return;
+            }
+
+            // Extract the child ID from the selected string
+            int childId = Integer.parseInt(selectedChild.split(":")[0].trim());
+
+            // Now fetch the diets for the selected child
+            String query = "SELECT * FROM diets WHERE user_id = ? AND child_id = ?";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, childId);
+            ResultSet rs = stmt.executeQuery();
+
+            StringBuilder output = new StringBuilder("Diets:\n");
+            while (rs.next()) {
+                output.append("Diet: ").append(rs.getString("diet_description")).append("\n")
+                      .append("Date: ").append(rs.getDate("date")).append("\n")
+                      .append("----------------------------------\n");
+            }
+            outputArea.setText(output.toString());
+        } catch (SQLException e) {
+            outputArea.setText("Error retrieving diets: " + e.getMessage());
+        }
+    }
+
+    private void viewActivities(int userId) {
+        try {
+            // Fetch the list of children for the user
+            String childQuery = "SELECT child_id, name FROM children WHERE user_id = ?";
+            PreparedStatement childStmt = connection.prepareStatement(childQuery);
+            childStmt.setInt(1, userId);
+            ResultSet childRs = childStmt.executeQuery();
+
+            // Create a list to hold child names and IDs
+            ArrayList<String> childNames = new ArrayList<>();
+            while (childRs.next()) {
+                int childId = childRs.getInt("child_id");
+                String childName = childRs.getString("name");
+                childNames.add(childId + ": " + childName); // Store as "childId: childName"
+            }
+
+            // Show a dialog to select a child
+            String selectedChild = (String) JOptionPane.showInputDialog(
+                    null,
+                    "Select a Child:",
+                    "Child Selection",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    childNames.toArray(),
+                    childNames.get(0) // Default selection
+            );
+
+            if (selectedChild == null) {
+                outputArea.setText("No child selected.\n");
+                return;
+            }
+
+            // Extract the child ID from the selected string
+            int childId = Integer.parseInt(selectedChild.split(":")[0].trim());
+
+            // Now fetch the activities for the selected child
+            String query = "SELECT * FROM activities WHERE user_id = ? AND child_id = ?";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, childId);
+            ResultSet rs = stmt.executeQuery();
+
+            StringBuilder output = new StringBuilder("Activities:\n");
+            while (rs.next()) {
+                output.append("Activity: ").append(rs.getString("activity_description")).append("\n")
+                      .append("Date: ").append(rs.getDate("date")).append("\n")
+                      .append("----------------------------------\n");
+            }
+            outputArea.setText(output.toString());
+        } catch (SQLException e) {
+            outputArea.setText("Error retrieving activities: " + e.getMessage());
+        }
+    }
+    
+    private void viewPaymentHistory(int userId) {
+        try {
+            String paymentHistoryQuery = "SELECT * FROM payment WHERE user_id = ?";
+            PreparedStatement paymentHistoryStmt = connection.prepareStatement(paymentHistoryQuery);
+            paymentHistoryStmt.setInt(1, userId);
+            ResultSet rs = paymentHistoryStmt.executeQuery();
+
+            StringBuilder history = new StringBuilder("Payment History:\n");
+            while (rs.next()) {
+                int paymentId = rs.getInt("payment_id");
+                double amount = rs.getDouble("amount");
+                
+                history.append("Payment ID: ").append(paymentId)
+                       .append(", Amount: $").append(amount).append("\n");
+                       
+            }
+
+            outputArea.setText(history.toString());
+        } catch (SQLException e) {
+            outputArea.setText("Error retrieving payment history: " + e.getMessage() + "\n");
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            Main mainApp = new Main();
+            mainApp.setVisible(true);
+        });
+    }
+}
