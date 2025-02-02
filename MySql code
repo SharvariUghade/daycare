@@ -1,0 +1,89 @@
+MariaDB [daycare_management]> create database miniproject;
+Query OK, 1 row affected (0.003 sec)
+
+MariaDB [daycare_management]> use miniproject;
+Database changed
+MariaDB [miniproject]> CREATE TABLE user (
+    ->     user_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     email VARCHAR(255) NOT NULL UNIQUE,
+    ->     password VARCHAR(255) NOT NULL,
+    ->     address VARCHAR(255)
+    -> );
+Query OK, 0 rows affected (0.030 sec)
+
+MariaDB [miniproject]> CREATE TABLE daycare_centers (
+    ->     center_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     name VARCHAR(255) NOT NULL,
+    ->     details TEXT,
+    ->     address VARCHAR(255) NOT NULL,
+    ->     rating FLOAT,
+    ->     contact_number VARCHAR(15),
+    ->     requests INT DEFAULT 0
+    -> );
+Query OK, 0 rows affected (0.046 sec)
+
+MariaDB [miniproject]> CREATE TABLE children (
+    ->     child_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     user_id INT,
+    ->     name VARCHAR(255) NOT NULL,
+    ->     age INT NOT NULL,
+    ->     FOREIGN KEY (user_id) REFERENCES user(user_id)
+    -> );
+Query OK, 0 rows affected (0.025 sec)
+
+MariaDB [miniproject]>
+MariaDB [miniproject]> CREATE TABLE payment (
+    ->     payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     user_id INT,
+    ->     amount DECIMAL(10, 2),
+    ->     date DATETIME,
+    ->     FOREIGN KEY (user_id) REFERENCES user(user_id)
+    -> );
+Query OK, 0 rows affected (0.025 sec)
+
+MariaDB [miniproject]>
+MariaDB [miniproject]> CREATE TABLE diets (
+    ->     diet_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     user_id INT,
+    ->     child_id INT,
+    ->     diet_description VARCHAR(255),
+    ->     date DATE,
+    ->     FOREIGN KEY (user_id) REFERENCES user(user_id),
+    ->     FOREIGN KEY (child_id) REFERENCES children(child_id)
+    -> );
+Query OK, 0 rows affected (0.028 sec)
+
+MariaDB [miniproject]>
+MariaDB [miniproject]> CREATE TABLE activities (
+    ->     ```sql
+    `> activity_id INT AUTO_INCREMENT PRIMARY KEY,
+    `>     user_id INT,
+    `>     child_id INT,
+    `>     activity_description VARCHAR(255),
+    `>     date DATE,
+    `>     FOREIGN KEY (user_id) REFERENCES user(user_id),
+    `>     FOREIGN KEY (child_id) REFERENCES children(child_id)
+    `> );
+    `> `
+    -> \c
+MariaDB [miniproject]> create table activities(
+    -> activity_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     user_id INT,
+    ->     child_id INT,
+    ->     activity_description VARCHAR(255),
+    ->     date DATE,
+    ->     FOREIGN KEY (user_id) REFERENCES user(user_id),
+    ->     FOREIGN KEY (child_id) REFERENCES children(child_id)
+    -> );
+Query OK, 0 rows affected (0.043 sec)
+
+MariaDB [miniproject]> select * from children;
++----------+---------+----------+-----+
+| child_id | user_id | name     | age |
++----------+---------+----------+-----+
+|        1 |       1 | shravika |   3 |
+|        2 |       2 | fudge    |   4 |
++----------+---------+----------+-----+
+2 rows in set (0.001 sec)
+
+MariaDB [miniproject]>
